@@ -1,3 +1,90 @@
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aplusb() {
+        let expression = "a+b".to_string();
+        let expected = Node {
+            value: Some('+'),
+            left: Some(Box::new(Node {
+                value: Some('a'),
+                left: None,
+                right: None,
+            })),
+            right: Some(Box::new(Node {
+                value: Some('b'),
+                left: None,
+                right: None,
+            })),
+        };
+        assert_eq!(expression_tree(&expression), expected);
+    }
+
+    #[test]
+    fn aplusbplusc() {
+        let expression = "(a+b)+c".to_string();
+        let expected = Node {
+            value: Some('+'),
+            left: Some(Box::new(Node {
+                value: Some('+'),
+                left: Some(Box::new(Node {
+                    value: Some('a'),
+                    left: None,
+                    right: None,
+                })),
+                right: Some(Box::new(Node {
+                    value: Some('b'),
+                    left: None,
+                    right: None,
+                })),
+            })),
+            right: Some(Box::new(Node {
+                value: Some('c'),
+                left: None,
+                right: None,
+            })),
+        };
+        assert_eq!(expression_tree(&expression), expected);
+    }
+
+    #[test]
+    fn sum_of_sum() {
+        let expression = "(a+b)+(c+d)".to_string();
+        let expected = Node {
+            value: Some('+'),
+            left: Some(Box::new(Node {
+                value: Some('+'),
+                left: Some(Box::new(Node {
+                    value: Some('a'),
+                    left: None,
+                    right: None,
+                })),
+                right: Some(Box::new(Node {
+                    value: Some('b'),
+                    left: None,
+                    right: None,
+                })),
+            })),
+            right: Some(Box::new(Node {
+                value: Some('+'),
+                left: Some(Box::new(Node {
+                    value: Some('c'),
+                    left: None,
+                    right: None,
+                })),
+                right: Some(Box::new(Node {
+                    value: Some('d'),
+                    left: None,
+                    right: None,
+                })),
+            })),
+        };
+        assert_eq!(expression_tree(&expression), expected);
+    }
+}
+
+
 #[derive(Debug)]
 struct Node {
     value: Option<char>,
@@ -12,6 +99,32 @@ impl Node {
             left: None,
             right: None,
         }
+    }
+    fn eq(&self, other: &Node) -> bool {
+        if self.value != other.value {
+            return false;
+        }
+        if self.left.is_some() && other.left.is_some() {
+            if !self.left.as_ref().unwrap().eq(other.left.as_ref().unwrap()) {
+                return false;
+            }
+        } else if self.left.is_some() || other.left.is_some() {
+            return false;
+        }
+        if self.right.is_some() && other.right.is_some() {
+            if !self.right.as_ref().unwrap().eq(other.right.as_ref().unwrap()) {
+                return false;
+            }
+        } else if self.right.is_some() || other.right.is_some() {
+            return false;
+        }
+        true
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.eq(other)
     }
 }
 
