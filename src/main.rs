@@ -1,3 +1,8 @@
+mod node;
+use node::Node;
+use core::fmt;
+
+//MARK: Tests
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -18,7 +23,7 @@ mod tests {
                 right: None,
             })),
         };
-        assert_eq!(expression_tree(&expression), expected);
+        assert_eq!(build_tree(&expression, &mut 0).0, expected);
     }
 
     #[test]
@@ -45,7 +50,7 @@ mod tests {
                 right: None,
             })),
         };
-        assert_eq!(expression_tree(&expression), expected);
+        assert_eq!(build_tree(&expression, &mut 0).0, expected);
     }
 
     #[test]
@@ -80,55 +85,12 @@ mod tests {
                 })),
             })),
         };
-        assert_eq!(expression_tree(&expression), expected);
+        assert_eq!(build_tree(&expression, &mut 0).0, expected);
     }
 }
 
-
-#[derive(Debug)]
-struct Node {
-    value: Option<char>,
-    left: Option<Box<Node>>,
-    right: Option<Box<Node>>,
-}
-
-impl Node {
-    fn new(value: Option<char>) -> Self {
-        Node {
-            value,
-            left: None,
-            right: None,
-        }
-    }
-    fn eq(&self, other: &Node) -> bool {
-        if self.value != other.value {
-            return false;
-        }
-        if self.left.is_some() && other.left.is_some() {
-            if !self.left.as_ref().unwrap().eq(other.left.as_ref().unwrap()) {
-                return false;
-            }
-        } else if self.left.is_some() || other.left.is_some() {
-            return false;
-        }
-        if self.right.is_some() && other.right.is_some() {
-            if !self.right.as_ref().unwrap().eq(other.right.as_ref().unwrap()) {
-                return false;
-            }
-        } else if self.right.is_some() || other.right.is_some() {
-            return false;
-        }
-        true
-    }
-}
-
-impl PartialEq for Node {
-    fn eq(&self, other: &Node) -> bool {
-        self.eq(other)
-    }
-}
-
-fn expression_tree(expression: &String) -> Node {
+// MARK: Builder
+fn build_tree(expression: &String, height: &mut i32) -> (Node, i32) {
     let chars = expression.chars().collect::<Vec<char>>();
     let mut node = Node::new(None);
     let mut left = Node::new(None);
@@ -136,12 +98,12 @@ fn expression_tree(expression: &String) -> Node {
     if chars[0] == '(' {
         let closing_index = find_closing_parenthesis(expression);
         node.value = Some(chars[closing_index + 1]);
-        left = expression_tree(&expression[1..closing_index].to_string());
+        (left, *height) = build_tree(&expression[1..closing_index].to_string(), height);
     }
     if chars[chars.len() - 1] == ')' {
         let opening_index = find_opening_parenthesis(expression);
         node.value = Some(chars[opening_index - 1]);
-        right = expression_tree(&expression[opening_index + 1..expression.len() - 1].to_string());
+        (right, *height) = build_tree(&expression[opening_index + 1..expression.len() - 1].to_string(), height);
     }
     if chars[0] != '(' && chars[chars.len() - 1] != ')' {
         node.value = Some(chars[1]);
@@ -154,7 +116,7 @@ fn expression_tree(expression: &String) -> Node {
     }
     node.left = Some(Box::new(left));
     node.right = Some(Box::new(right));
-    node
+    (node, *height + 1)
 }
 
 fn find_closing_parenthesis(expression: &String) -> usize {
@@ -192,11 +154,76 @@ fn find_opening_parenthesis(expression: &String) -> usize {
         if count == 0 && found {
             return i;
         }
+        if i == 0 {
+            break;
+        }
         i -= 1;
     }
     panic!("No closing parenthesis found");
 }
 
+// MARK: ExpressionTree
+struct ExpressionTree {
+    expression: String,
+    root: Node,
+    height: i32,
+}
+
+impl ExpressionTree {
+    fn new(expression: String) -> Self {
+        ExpressionTree {
+            expression,
+            root: Node::new(None),
+            height: 1,
+        }
+    }
+
+    fn build(&mut self) {
+        self.root = build_tree(&self.expression, &mut self.height).0;
+    }
+}
+
+impl fmt::Display for ExpressionTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", " ".repeat(2_usize.pow(self.height as u32)))?;
+        write!(f, "{}\n", self.root.value.unwrap())?;
+        let mut current_layer: Vec<&Box<Node>> = vec![&self.root.left.as_ref().unwrap(), &self.root.right.as_ref().unwrap()];
+        let current_len = current_layer.len();
+        let mut layer_count = 1;
+
+        while !current_layer.is_empty() {
+
+            let mut next_layer = Vec::new();
+            let padding = 2_usize.pow(self.height as u32 - layer_count );
+            write!(f, "{}", " ".repeat(padding))?;
+            for node in current_layer {
+                if let Some(value) = node.value {
+                    write!(f, "{}{}", value," ".repeat(2*padding - 1))?;
+                }
+                if node.left.is_some() {
+                    next_layer.push(node.left.as_ref().unwrap());
+                }
+                if node.right.is_some() {
+                    next_layer.push(node.right.as_ref().unwrap());
+                }
+            }
+            write!(f, "\n")?;
+            for _ in 0..current_len {
+                if next_layer.len()  == 0 {
+                    break;
+                }
+            }
+            write!(f, "\n")?;
+            current_layer = next_layer;
+            layer_count += 1;
+        }
+        Ok(())
+    }
+}
+
 fn main() {
-    println!("{:?}", expression_tree(&"(a+b)+(c+d)".to_string()));
+    let expression = "(a+b)+c".to_string();
+    let mut my_tree = ExpressionTree::new(expression);
+    my_tree.build();
+    println!("{}", my_tree);
 }
