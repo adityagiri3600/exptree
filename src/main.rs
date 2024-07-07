@@ -185,8 +185,10 @@ impl ExpressionTree {
 
 impl fmt::Display for ExpressionTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
         write!(f, "{}", " ".repeat(2_usize.pow(self.height as u32)))?;
         write!(f, "{}\n", self.root.value.unwrap())?;
+
         let mut current_layer: Vec<&Box<Node>> = vec![&self.root.left.as_ref().unwrap(), &self.root.right.as_ref().unwrap()];
         let current_len = current_layer.len();
         let mut layer_count = 1;
@@ -221,9 +223,15 @@ impl fmt::Display for ExpressionTree {
     }
 }
 
+use clap::Parser;
+#[derive(Parser)]
+struct Cli {
+    expression: String,
+}
+
 fn main() {
-    let expression = "(a+b)+c".to_string();
-    let mut my_tree = ExpressionTree::new(expression);
+    let args = Cli::parse();
+    let mut my_tree = ExpressionTree::new(args.expression);
     my_tree.build();
     println!("{}", my_tree);
 }
